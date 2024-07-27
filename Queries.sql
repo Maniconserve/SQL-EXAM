@@ -145,18 +145,9 @@ ORDER BY
         WHEN G.Grade < 8 THEN S.Marks
         ELSE NULL
     END;
-8)
-WITH ProjectList AS 
-(
-    SELECT 
-        ROW_NUMBER() OVER (ORDER BY Start_Date) 'Row',
-        Start_Date
-    FROM 
-        Projects
-)
-SELECT MIN(Start_Date), DATEADD(DAY, 1, MAX(Start_Date))
-FROM ProjectList 
+8)SELECT MIN(Start_Date), DATEADD(DAY, 1, MAX(Start_Date))
+FROM Tasks 
 GROUP BY 
-    DATEDIFF(DAY, Row, Start_Date)
+    DATEDIFF(DAY, Task_ID, Start_Date)
 ORDER BY 
     DATEDIFF(DAY, MIN(Start_Date), MAX(Start_Date)), MIN(Start_Date)
