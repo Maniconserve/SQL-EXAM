@@ -39,6 +39,28 @@ BEGIN
         p.doctor_id = @doctor_id;
 END;
 
+CREATE PROCEDURE GetPatientDetailsAndTotalAmount1
+    @doctor_id INT
+AS
+BEGIN
+    SELECT
+        p.patient_id,
+        p.name,
+        p.age,
+        p.gender,
+        p.address,
+        p.disease,
+        COALESCE(SUM(b.room_charge * b.no_of_days), 0) + COALESCE(SUM(l.amount), 0) AS total_amount
+    FROM
+        Patient p
+    LEFT JOIN Bill b ON p.patient_id = b.patient_id AND b.doctor_id = @doctor_id
+    LEFT JOIN Laboratory l ON p.patient_id = l.patient_id AND l.doctor_id = @doctor_id
+    WHERE
+        p.doctor_id = @doctor_id
+    GROUP BY
+        p.patient_id, p.name, p.age, p.gender, p.address, p.disease;
+END;
+
 B)
 CREATE PROCEDURE GetNthHighestAmountPaidPatient
     @nth INT,
@@ -75,6 +97,35 @@ BEGIN
     WHERE
         rn = @nth;
 END;
+
+
+CREATE PROCEDURE GetNthHighestAmountPaidPatient1
+    @nth INT,
+    @patient_id INT OUTPUT,
+    @patient_name VARCHAR(255) OUTPUT
+AS
+BEGIN
+    ;WITH RankedPatients AS (
+        SELECT
+            p.patient_id,
+            p.name,
+            SUM(b.room_charge * b.no_of_days) + SUM(l.amount) AS total_amount,
+            ROW_NUMBER() OVER (ORDER BY SUM(b.room_charge * b.no_of_days) + SUM(l.amount) DESC) AS rn
+        FROM
+            Patient p
+        LEFT JOIN Bill b ON p.patient_id = b.patient_id
+        LEFT JOIN Laboratory l ON p.patient_id = l.patient_id
+        GROUP BY
+            p.patient_id, p.name
+    )
+    SELECT
+        @patient_id = patient_id,
+        @patient_name = name
+    FROM
+        RankedPatients
+    WHERE
+        rn = @nth;
+END;
 2)
 SELECT
     ord_date,
@@ -102,6 +153,30 @@ WHERE
         ORDER BY SANCT_AMOUNT
         OFFSET 1 ROWS FETCH NEXT 1 ROW ONLY
     );
+
+WITH DepartmentSanction AS (
+    SELECT
+        DPT_CODE,
+        SANCT_AMOUNT,
+        DENSE_RANK() OVER (ORDER BY SANCT_AMOUNT ASC) AS dr
+    FROM
+        emp_department
+),
+SecondLowestDept AS (
+    SELECT
+        DPT_CODE
+    FROM
+        DepartmentSanction
+    WHERE
+        dr = 2
+)
+SELECT
+    e.emp_fname,
+    e.emp_lname
+FROM
+    emp_details e
+JOIN
+    SecondLowestDept d ON e.emp_depti = d.DPT_CODE;
 5)
 DECLARE @FilterColumn VARCHAR(20) = 'IsArchive'; 
 
